@@ -13,6 +13,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'application/auth/auth_bloc.dart';
 import 'infrastructure/auth/firebase_auth_facade.dart';
 import 'infrastructure/core/firebase_injectable_module.dart';
+import 'infrastructure/notes/hasura_note_repository.dart';
 import 'domain/auth/i_auth_facade.dart';
 import 'domain/notes/i_note_repository.dart';
 import 'application/notes/note_actor/note_actor_bloc.dart';
@@ -20,6 +21,10 @@ import 'application/notes/note_form/note_form_bloc.dart';
 import 'infrastructure/notes/note_repository.dart';
 import 'application/notes/note_watcher/note_watcher_bloc.dart';
 import 'application/auth/sign_in_form/sign_in_form_bloc.dart';
+
+/// Environment names
+const _hasura = 'hasura';
+const _firestore = 'firestore';
 
 /// adds generated dependencies
 /// to the provided [GetIt] instance
@@ -36,8 +41,11 @@ GetIt $initGetIt(
   gh.lazySingleton<GoogleSignIn>(() => firebaseInjectableModule.googleSignIn);
   gh.lazySingleton<IAuthFacade>(
       () => FirebaseAuthFacade(get<FirebaseAuth>(), get<GoogleSignIn>()));
+  gh.lazySingleton<INoteRepository>(() => HasuraNoteRepository(),
+      registerFor: {_hasura});
   gh.lazySingleton<INoteRepository>(
-      () => NoteRepository(get<FirebaseFirestore>()));
+      () => NoteRepository(get<FirebaseFirestore>()),
+      registerFor: {_firestore});
   gh.factory<NoteActorBloc>(() => NoteActorBloc(get<INoteRepository>()));
   gh.factory<NoteFormBloc>(() => NoteFormBloc(get<INoteRepository>()));
   gh.factory<NoteWatcherBloc>(() => NoteWatcherBloc(get<INoteRepository>()));

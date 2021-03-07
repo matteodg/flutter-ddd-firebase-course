@@ -53,6 +53,12 @@ abstract class NoteDto implements _$NoteDto {
   factory NoteDto.fromFirestore(DocumentSnapshot doc) {
     return NoteDto.fromJson(doc.data()).copyWith(id: doc.id);
   }
+
+  factory NoteDto.fromHasura(Map<String, dynamic> map) {
+    final noteId = map['id'] as String;
+    //print('noteId=$noteId, map=$map');
+    return NoteDto.fromJson(map).copyWith(id: noteId);
+  }
 }
 
 class ServerTimestampConverter implements JsonConverter<FieldValue, Object> {

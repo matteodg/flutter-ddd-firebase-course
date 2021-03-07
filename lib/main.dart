@@ -6,7 +6,7 @@ import 'package:notes_firebase_ddd_course/presentation/core/app_widget.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  configureInjection(Environment.prod);
+  configureInjection('hasura');
   await Firebase.initializeApp();
   runApp(AppWidget());
 }

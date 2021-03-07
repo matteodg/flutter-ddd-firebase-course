@@ -17,6 +17,10 @@ class NoteRepository implements INoteRepository {
 
   NoteRepository(this._firestore);
 
+  Iterable<Note> filterUncompleted(Iterable<Note> notes) {
+    return notes.where((note) => note.todos.getOrCrash().any((todoItem) => !todoItem.done));
+  }
+
   @override
   Stream<Either<NoteFailure, KtList<Note>>> watchAll() async* {
     final userDoc = await _firestore.userDocument();
@@ -24,11 +28,13 @@ class NoteRepository implements INoteRepository {
         .orderBy('serverTimeStamp', descending: true)
         .snapshots()
         .map(
-          (snapshot) => right<NoteFailure, KtList<Note>>(
-            snapshot.docs
-                .map((doc) => NoteDto.fromFirestore(doc).toDomain())
-                .toImmutableList(),
-          ),
+          (snapshot) => snapshot.docs.map((doc) => NoteDto.fromFirestore(doc).toDomain()),
+        )
+        .map(
+          id,
+        )
+        .map(
+          (notes) => right<NoteFailure, KtList<Note>>(notes.toImmutableList()),
         )
         .onErrorReturnWith((e) {
       if (e is FirebaseException && e.message.contains('PERMISSION_DENIED')) {
@@ -47,16 +53,13 @@ class NoteRepository implements INoteRepository {
         .orderBy('serverTimeStamp', descending: true)
         .snapshots()
         .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => NoteDto.fromFirestore(doc).toDomain()),
+          (snapshot) => snapshot.docs.map((doc) => NoteDto.fromFirestore(doc).toDomain()),
         )
         .map(
-          (notes) => right<NoteFailure, KtList<Note>>(
-            notes
-                .where((note) =>
-                    note.todos.getOrCrash().any((todoItem) => !todoItem.done))
-                .toImmutableList(),
-          ),
+          filterUncompleted,
+        )
+        .map(
+          (notes) => right<NoteFailure, KtList<Note>>(notes.toImmutableList()),
         )
         .onErrorReturnWith((e) {
       if (e is FirebaseException && e.message.contains('PERMISSION_DENIED')) {

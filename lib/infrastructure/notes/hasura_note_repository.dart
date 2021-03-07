@@ -17,7 +17,15 @@ class HasuraNoteRepository implements INoteRepository {
   GraphQLClient client;
   HasuraNoteRepository() {
     final _httpLink = HttpLink('https://mycinnamonbuns.hasura.app/v1/graphql');
-    final _wsLink = WebSocketLink('wss://mycinnamonbuns.hasura.app/v1/graphql');
+    final _wsLink = WebSocketLink(
+      'wss://mycinnamonbuns.hasura.app/v1/graphql',
+      config: const SocketClientConfig(
+        initialPayload: {
+          "headers": {"X-Hasura-Admin-Secret": 'Mr9UWw68kABV2VJ6wECq4CswAF4rgFtJ'}
+        },
+      ),
+    );
+
     final _authLink = AuthLink(
       headerKey: 'X-Hasura-Admin-Secret',
       getToken: () async {
@@ -52,7 +60,7 @@ class HasuraNoteRepository implements INoteRepository {
 
   Stream<Either<NoteFailure, KtList<Note>>> _watch(bool onlyUncompleted) async* {
     const String query = r'''
-      query NotesQuery($userId: String!) {
+      subscription NotesQuery($userId: String!) {
         notes_notes(where: {user_id: {_eq: $userId}}) {
           id
           body
@@ -68,14 +76,15 @@ class HasuraNoteRepository implements INoteRepository {
     ''';
     final userOption = await getIt<IAuthFacade>().getSignedInUser();
     final user = userOption.getOrElse(() => throw NotAuthenticatedError());
-    final QueryOptions options = QueryOptions(
+    final SubscriptionOptions options = SubscriptionOptions(
       document: gql(query),
       variables: <String, dynamic>{
         'userId': user.id.getOrCrash(),
       },
     );
-    final QueryResult result = await client.query(options);
-    yield processQueryResult(result: result, onlyUncompleted: onlyUncompleted);
+    await for (final QueryResult result in client.subscribe(options)) {
+      yield processQueryResult(result: result, onlyUncompleted: onlyUncompleted);
+    }
   }
 
   Either<NoteFailure, KtList<Note>> processQueryResult({QueryResult result, bool onlyUncompleted}) {

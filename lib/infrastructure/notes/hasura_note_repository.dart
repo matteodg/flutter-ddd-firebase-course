@@ -61,56 +61,21 @@ class HasuraNoteRepository implements INoteRepository {
     );
   }
 
-  @override
-  Stream<Either<NoteFailure, KtList<Note>>> watchAll() async* {
-    const String query = r'''
-      subscription NotesQuery($userId: String!) {
-        notes_notes(where: {user_id: {_eq: $userId}}) {
-          id
-          body
-          color
-          serverTimeStamp
-          todos {
-            id
-            name
-            done
-          }
-        }
-      }
-    ''';
-    final userOption = await getIt<IAuthFacade>().getSignedInUser();
-    final user = userOption.getOrElse(() => throw NotAuthenticatedError());
-    final SubscriptionOptions options = SubscriptionOptions(
-      document: gql(query),
-      variables: <String, dynamic>{
-        'userId': user.id.getOrCrash(),
-      },
-    );
-    final Stream<QueryResult> stream = client.subscribe(options);
-    yield* stream.map(
-      (snapshot) {
-        if (snapshot.hasException) {
-          throw snapshot.exception;
-        }
-        final rawNotes = fromQueryResult(snapshot);
-        return right<NoteFailure, KtList<Note>>(rawNotes.map(
-          (rawNote) {
-            return NoteDto.fromHasura(rawNote).toDomain();
-          },
-        ).toImmutableList());
-      },
-    ).onErrorReturnWith((e) {
-      if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
-        return left(const NoteFailure.insufficientPermission());
-      } else {
-        // log.error(e.toString());
-        return left(const NoteFailure.unexpected());
-      }
-    });
+  Iterable<Note> filterUncompleted(Iterable<Note> notes) {
+    return notes.where((note) => note.todos.getOrCrash().any((todoItem) => !todoItem.done));
   }
 
   @override
-  Stream<Either<NoteFailure, KtList<Note>>> watchUncompleted() async* {
+  Stream<Either<NoteFailure, KtList<Note>>> watchAll() {
+    return _watch();
+  }
+
+  @override
+  Stream<Either<NoteFailure, KtList<Note>>> watchUncompleted() {
+    return _watch(onlyUncompleted: true);
+  }
+
+  Stream<Either<NoteFailure, KtList<Note>>> _watch({bool onlyUncompleted = false}) async* {
     const String query = r'''
       subscription NotesQuery($userId: String!) {
         notes_notes(where: {user_id: {_eq: $userId}}) {
@@ -135,27 +100,35 @@ class HasuraNoteRepository implements INoteRepository {
       },
     );
     final Stream<QueryResult> stream = client.subscribe(options);
-    yield* stream.map(
-      (snapshot) {
-        if (snapshot.hasException) {
-          throw snapshot.exception;
-        }
-        final rawNotes = fromQueryResult(snapshot);
-        Iterable<Note> notes = rawNotes.map((rawNote) => NoteDto.fromHasura(rawNote).toDomain());
-
-        // filter out uncompleted
-        notes = notes.where((note) => note.todos.getOrCrash().any((todoItem) => !todoItem.done));
-
-        return right<NoteFailure, KtList<Note>>(notes.toImmutableList());
-      },
-    ).onErrorReturnWith((e) {
-      if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
-        return left(const NoteFailure.insufficientPermission());
-      } else {
-        // log.error(e.toString());
-        return left(const NoteFailure.unexpected());
-      }
-    });
+    yield* stream
+        .map(
+          (result) {
+            if (result.hasException) {
+              throw result.exception;
+            }
+            return result;
+          },
+        )
+        .map(
+          (result) => fromQueryResult(result),
+        )
+        .map(
+          (rawNotes) => rawNotes.map((rawNote) => NoteDto.fromHasura(rawNote).toDomain()),
+        )
+        .map(
+          onlyUncompleted ? filterUncompleted : id,
+        )
+        .map(
+          (notes) => right<NoteFailure, KtList<Note>>(notes.toImmutableList()),
+        )
+        .onErrorReturnWith((e) {
+          if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
+            return left(const NoteFailure.insufficientPermission());
+          } else {
+            // log.error(e.toString());
+            return left(const NoteFailure.unexpected());
+          }
+        });
   }
 
   Iterable<Map<String, dynamic>> fromQueryResult(QueryResult result) {

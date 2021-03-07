@@ -17,12 +17,12 @@ import 'note_dtos.dart';
 class HasuraNoteRepository implements INoteRepository {
   GraphQLClient client;
   HasuraNoteRepository() {
-    final _httpLink = HttpLink('https://mycinnamonbuns.hasura.app/v1/graphql');
+    final _httpLink = HttpLink('https://ddd-firebase-course.hasura.app/v1/graphql');
     final _wsLink = WebSocketLink(
-      'wss://mycinnamonbuns.hasura.app/v1/graphql',
+      'wss://ddd-firebase-course.hasura.app/v1/graphql',
       config: const SocketClientConfig(
         initialPayload: {
-          "headers": {"X-Hasura-Admin-Secret": 'Mr9UWw68kABV2VJ6wECq4CswAF4rgFtJ'}
+          "headers": {"X-Hasura-Admin-Secret": 'Us1GbOVGojGN1qYr1XE9afyHnZ3BMihPolobZn3CWZ8eVfdjlWZiUtCzGTzie7wS'}
         },
       ),
     );
@@ -30,7 +30,7 @@ class HasuraNoteRepository implements INoteRepository {
     final _authLink = AuthLink(
       headerKey: 'X-Hasura-Admin-Secret',
       getToken: () async {
-        return 'Mr9UWw68kABV2VJ6wECq4CswAF4rgFtJ';
+        return 'Us1GbOVGojGN1qYr1XE9afyHnZ3BMihPolobZn3CWZ8eVfdjlWZiUtCzGTzie7wS';
       },
     );
 
@@ -78,7 +78,7 @@ class HasuraNoteRepository implements INoteRepository {
   Stream<Either<NoteFailure, KtList<Note>>> _watch({bool onlyUncompleted = false}) async* {
     const String query = r'''
       subscription NotesQuery($userId: String!) {
-        notes_notes(where: {user_id: {_eq: $userId}}) {
+        notes(where: {user_id: {_eq: $userId}}) {
           id
           body
           color
@@ -132,7 +132,7 @@ class HasuraNoteRepository implements INoteRepository {
   }
 
   Iterable<Map<String, dynamic>> fromQueryResult(QueryResult result) {
-    final List<Object> list = result.data['notes_notes'] as List<Object>;
+    final List<Object> list = result.data['notes'] as List<Object>;
     return list.whereType<Map<String, dynamic>>().map((Map<String, dynamic> o) => o);
   }
 

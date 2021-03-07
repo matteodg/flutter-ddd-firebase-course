@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:kt_dart/kt.dart';
 import 'package:notes_firebase_ddd_course/domain/auth/i_auth_facade.dart';
 import 'package:notes_firebase_ddd_course/domain/core/errors.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../../domain/notes/i_note_repository.dart';
 import '../../domain/notes/note.dart';
@@ -40,25 +41,28 @@ class HasuraNoteRepository implements INoteRepository {
       /// **NOTE** The default store is the InMemoryStore, which does NOT persist to disk
       cache: GraphQLCache(),
       link: _authLink.concat(_link),
+      defaultPolicies: DefaultPolicies(
+        query: Policies(
+          fetch: FetchPolicy.networkOnly,
+          error: ErrorPolicy.all,
+          cacheReread: CacheRereadPolicy.mergeOptimistic,
+        ),
+        subscribe: Policies(
+          fetch: FetchPolicy.networkOnly,
+          error: ErrorPolicy.all,
+          cacheReread: CacheRereadPolicy.mergeOptimistic,
+        ),
+        watchMutation: Policies(
+          fetch: FetchPolicy.networkOnly,
+          error: ErrorPolicy.all,
+          cacheReread: CacheRereadPolicy.mergeOptimistic,
+        ),
+      ),
     );
   }
 
   @override
   Stream<Either<NoteFailure, KtList<Note>>> watchAll() async* {
-    yield* _watch(false);
-  }
-
-  @override
-  Stream<Either<NoteFailure, KtList<Note>>> watchUncompleted() async* {
-    yield* _watch(true);
-  }
-
-  Iterable<Map<String, dynamic>> fromQueryResult(QueryResult result) {
-    final List<Object> list = result.data['notes_notes'] as List<Object>;
-    return list.whereType<Map<String, dynamic>>().map((Map<String, dynamic> o) => o);
-  }
-
-  Stream<Either<NoteFailure, KtList<Note>>> _watch(bool onlyUncompleted) async* {
     const String query = r'''
       subscription NotesQuery($userId: String!) {
         notes_notes(where: {user_id: {_eq: $userId}}) {
@@ -82,31 +86,81 @@ class HasuraNoteRepository implements INoteRepository {
         'userId': user.id.getOrCrash(),
       },
     );
-    await for (final QueryResult result in client.subscribe(options)) {
-      yield processQueryResult(result: result, onlyUncompleted: onlyUncompleted);
-    }
-  }
-
-  Either<NoteFailure, KtList<Note>> processQueryResult({QueryResult result, bool onlyUncompleted}) {
-    if (result.hasException) {
-      final message = result.exception.toString();
-      if (message.contains('PERMISSION_DENIED')) {
+    final Stream<QueryResult> stream = client.subscribe(options);
+    yield* stream.map(
+      (snapshot) {
+        if (snapshot.hasException) {
+          throw snapshot.exception;
+        }
+        final rawNotes = fromQueryResult(snapshot);
+        return right<NoteFailure, KtList<Note>>(rawNotes.map(
+          (rawNote) {
+            return NoteDto.fromHasura(rawNote).toDomain();
+          },
+        ).toImmutableList());
+      },
+    ).onErrorReturnWith((e) {
+      if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
         return left(const NoteFailure.insufficientPermission());
       } else {
+        // log.error(e.toString());
         return left(const NoteFailure.unexpected());
       }
-    } else {
-      final Iterable<Map<String, dynamic>> rawNotes = fromQueryResult(result);
-      final Iterable<Note> notes = rawNotes.map((rawNote) => NoteDto.fromHasura(rawNote).toDomain());
+    });
+  }
 
-      if (onlyUncompleted) {
-        return right<NoteFailure, KtList<Note>>(
-          notes.where((note) => note.todos.getOrCrash().any((todoItem) => !todoItem.done)).toImmutableList(),
-        );
-      } else {
-        return right<NoteFailure, KtList<Note>>(notes.toImmutableList());
+  @override
+  Stream<Either<NoteFailure, KtList<Note>>> watchUncompleted() async* {
+    const String query = r'''
+      subscription NotesQuery($userId: String!) {
+        notes_notes(where: {user_id: {_eq: $userId}}) {
+          id
+          body
+          color
+          serverTimeStamp
+          todos {
+            id
+            name
+            done
+          }
+        }
       }
-    }
+    ''';
+    final userOption = await getIt<IAuthFacade>().getSignedInUser();
+    final user = userOption.getOrElse(() => throw NotAuthenticatedError());
+    final SubscriptionOptions options = SubscriptionOptions(
+      document: gql(query),
+      variables: <String, dynamic>{
+        'userId': user.id.getOrCrash(),
+      },
+    );
+    final Stream<QueryResult> stream = client.subscribe(options);
+    yield* stream.map(
+      (snapshot) {
+        if (snapshot.hasException) {
+          throw snapshot.exception;
+        }
+        final rawNotes = fromQueryResult(snapshot);
+        Iterable<Note> notes = rawNotes.map((rawNote) => NoteDto.fromHasura(rawNote).toDomain());
+
+        // filter out uncompleted
+        notes = notes.where((note) => note.todos.getOrCrash().any((todoItem) => !todoItem.done));
+
+        return right<NoteFailure, KtList<Note>>(notes.toImmutableList());
+      },
+    ).onErrorReturnWith((e) {
+      if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
+        return left(const NoteFailure.insufficientPermission());
+      } else {
+        // log.error(e.toString());
+        return left(const NoteFailure.unexpected());
+      }
+    });
+  }
+
+  Iterable<Map<String, dynamic>> fromQueryResult(QueryResult result) {
+    final List<Object> list = result.data['notes_notes'] as List<Object>;
+    return list.whereType<Map<String, dynamic>>().map((Map<String, dynamic> o) => o);
   }
 
   @override

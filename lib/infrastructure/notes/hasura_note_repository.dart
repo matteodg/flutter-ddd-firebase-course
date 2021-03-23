@@ -3,6 +3,7 @@ import 'package:graphql/client.dart';
 import 'package:injectable/injectable.dart';
 import 'package:kt_dart/kt.dart';
 import 'package:notes_firebase_ddd_course/domain/auth/i_auth_facade.dart';
+import 'package:notes_firebase_ddd_course/domain/auth/notes_user.dart';
 import 'package:notes_firebase_ddd_course/domain/core/errors.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -15,22 +16,23 @@ import 'note_dtos.dart';
 @Environment('hasura')
 @LazySingleton(as: INoteRepository)
 class HasuraNoteRepository implements INoteRepository {
+  final IAuthFacade authFacade;
   GraphQLClient client;
-  HasuraNoteRepository() {
+
+  HasuraNoteRepository(this.authFacade) {
     final _httpLink = HttpLink('https://ddd-firebase-course.hasura.app/v1/graphql');
+
     final _wsLink = WebSocketLink(
       'wss://ddd-firebase-course.hasura.app/v1/graphql',
-      config: const SocketClientConfig(
-        initialPayload: {
-          "headers": {"X-Hasura-Admin-Secret": 'Us1GbOVGojGN1qYr1XE9afyHnZ3BMihPolobZn3CWZ8eVfdjlWZiUtCzGTzie7wS'}
-        },
+      config: SocketClientConfig(
+        initialPayload: getTokenFunction,
       ),
     );
 
     final _authLink = AuthLink(
-      headerKey: 'X-Hasura-Admin-Secret',
       getToken: () async {
-        return 'Us1GbOVGojGN1qYr1XE9afyHnZ3BMihPolobZn3CWZ8eVfdjlWZiUtCzGTzie7wS';
+        final Map<String, dynamic> map = await getTokenFunction();
+        return Future.value(map['Authorization'] as String);
       },
     );
 
@@ -41,23 +43,38 @@ class HasuraNoteRepository implements INoteRepository {
       /// **NOTE** The default store is the InMemoryStore, which does NOT persist to disk
       cache: GraphQLCache(),
       link: _authLink.concat(_link),
-      defaultPolicies: DefaultPolicies(
-        query: Policies(
-          fetch: FetchPolicy.networkOnly,
-          error: ErrorPolicy.all,
-          cacheReread: CacheRereadPolicy.mergeOptimistic,
-        ),
-        subscribe: Policies(
-          fetch: FetchPolicy.networkOnly,
-          error: ErrorPolicy.all,
-          cacheReread: CacheRereadPolicy.mergeOptimistic,
-        ),
-        watchMutation: Policies(
-          fetch: FetchPolicy.networkOnly,
-          error: ErrorPolicy.all,
-          cacheReread: CacheRereadPolicy.mergeOptimistic,
-        ),
-      ),
+      // defaultPolicies: DefaultPolicies(
+      //   query: Policies(
+      //     fetch: FetchPolicy.networkOnly,
+      //     error: ErrorPolicy.all,
+      //     cacheReread: CacheRereadPolicy.mergeOptimistic,
+      //   ),
+      //   subscribe: Policies(
+      //     fetch: FetchPolicy.networkOnly,
+      //     error: ErrorPolicy.all,
+      //     cacheReread: CacheRereadPolicy.mergeOptimistic,
+      //   ),
+      //   watchMutation: Policies(
+      //     fetch: FetchPolicy.networkOnly,
+      //     error: ErrorPolicy.all,
+      //     cacheReread: CacheRereadPolicy.mergeOptimistic,
+      //   ),
+      // ),
+    );
+  }
+
+  Future<Map<String, dynamic>> getTokenFunction() async {
+    final option = await authFacade.getSignedInUser();
+    return option.fold(
+      () => null,
+      (user) async {
+        final idToken = await user.getIdToken();
+        return {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json',
+//          'X-Hasura-Role': 'user',
+        };
+      },
     );
   }
 
@@ -109,26 +126,20 @@ class HasuraNoteRepository implements INoteRepository {
             return result;
           },
         )
-        .map(
-          (result) => fromQueryResult(result),
-        )
-        .map(
-          (rawNotes) => rawNotes.map((rawNote) => NoteDto.fromHasura(rawNote).toDomain()),
-        )
-        .map(
-          onlyUncompleted ? filterUncompleted : id,
-        )
-        .map(
-          (notes) => right<NoteFailure, KtList<Note>>(notes.toImmutableList()),
-        )
-        .onErrorReturnWith((e) {
-          if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
-            return left(const NoteFailure.insufficientPermission());
-          } else {
-            // log.error(e.toString());
-            return left(const NoteFailure.unexpected());
-          }
-        });
+        .map((result) => fromQueryResult(result))
+        .map((rawNotes) => rawNotes.map((rawNote) => NoteDto.fromHasura(rawNote).toDomain()))
+        .map(onlyUncompleted ? filterUncompleted : id)
+        .map((notes) => right<NoteFailure, KtList<Note>>(notes.toImmutableList()))
+        .onErrorReturnWith(
+          (e) {
+            if (e is OperationException && e.toString().contains('PERMISSION_DENIED')) {
+              return left(const NoteFailure.insufficientPermission());
+            } else {
+              // log.error(e.toString());
+              return left(NoteFailure.unexpected(failureData: e));
+            }
+          },
+        );
   }
 
   Iterable<Map<String, dynamic>> fromQueryResult(QueryResult result) {
@@ -151,7 +162,7 @@ class HasuraNoteRepository implements INoteRepository {
     //   if (e.message.contains('PERMISSION_DENIED')) {
     //     return left(const NoteFailure.insufficientPermission());
     //   } else {
-    //     return left(const NoteFailure.unexpected());
+    //     return left(NoteFailure.unexpected(e));
     //   }
     // }
   }
@@ -173,7 +184,7 @@ class HasuraNoteRepository implements INoteRepository {
     //   } else if (e.message.contains('NOT_FOUND')) {
     //     return left(const NoteFailure.unableToUpdate());
     //   } else {
-    //     return left(const NoteFailure.unexpected());
+    //     return left(NoteFailure.unexpected(e));
     //   }
     // }
   }
@@ -195,7 +206,7 @@ class HasuraNoteRepository implements INoteRepository {
     //   } else if (e.message.contains('NOT_FOUND')) {
     //     return left(const NoteFailure.unableToUpdate());
     //   } else {
-    //     return left(const NoteFailure.unexpected());
+    //     return left(NoteFailure.unexpected(failureData: e));
     //   }
     // }
   }

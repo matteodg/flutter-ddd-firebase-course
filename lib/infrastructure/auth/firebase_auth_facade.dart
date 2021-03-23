@@ -6,7 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:injectable/injectable.dart';
 import 'package:notes_firebase_ddd_course/domain/auth/auth_failure.dart';
 import 'package:notes_firebase_ddd_course/domain/auth/i_auth_facade.dart';
-import 'package:notes_firebase_ddd_course/domain/auth/user.dart';
+import 'package:notes_firebase_ddd_course/domain/auth/notes_user.dart';
 import 'package:notes_firebase_ddd_course/domain/auth/value_objects.dart';
 import './firebase_user_mapper.dart';
 
@@ -21,8 +21,7 @@ class FirebaseAuthFacade implements IAuthFacade {
   );
 
   @override
-  Future<Option<User>> getSignedInUser() async =>
-      optionOf(_firebaseAuth.currentUser?.toDomain());
+  Future<Option<NotesUser>> getSignedInUser() async => optionOf(_firebaseAuth.currentUser?.toDomain());
 
   @override
   Future<Either<AuthFailure, Unit>> registerWithEmailAndPassword({
@@ -60,8 +59,7 @@ class FirebaseAuthFacade implements IAuthFacade {
       );
       return right(unit);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'ERROR_WRONG_PASSWORD' ||
-          e.code == 'ERROR_USER_NOT_FOUND') {
+      if (e.code == 'ERROR_WRONG_PASSWORD' || e.code == 'ERROR_USER_NOT_FOUND') {
         return left(const AuthFailure.invalidEmailAndPasswordCombination());
       } else {
         return left(const AuthFailure.serverError());

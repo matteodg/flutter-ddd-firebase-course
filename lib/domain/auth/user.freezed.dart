@@ -1,7 +1,7 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies
 
-part of 'user.dart';
+part of 'notes_user.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -10,114 +10,121 @@ part of 'user.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
-class _$UserTearOff {
-  const _$UserTearOff();
+class _$NotesUserTearOff {
+  const _$NotesUserTearOff();
 
 // ignore: unused_element
-  _User call({@required UniqueId id}) {
-    return _User(
+  _NotesUser call({@required UniqueId id, User firebaseUser}) {
+    return _NotesUser(
       id: id,
+      firebaseUser: firebaseUser,
     );
   }
 }
 
 /// @nodoc
 // ignore: unused_element
-const $User = _$UserTearOff();
+const $NotesUser = _$NotesUserTearOff();
 
 /// @nodoc
-mixin _$User {
+mixin _$NotesUser {
   UniqueId get id;
+  User get firebaseUser;
 
-  $UserCopyWith<User> get copyWith;
+  $NotesUserCopyWith<NotesUser> get copyWith;
 }
 
 /// @nodoc
-abstract class $UserCopyWith<$Res> {
-  factory $UserCopyWith(User value, $Res Function(User) then) =
-      _$UserCopyWithImpl<$Res>;
-  $Res call({UniqueId id});
+abstract class $NotesUserCopyWith<$Res> {
+  factory $NotesUserCopyWith(NotesUser value, $Res Function(NotesUser) then) = _$NotesUserCopyWithImpl<$Res>;
+  $Res call({UniqueId id, User firebaseUser});
 }
 
 /// @nodoc
-class _$UserCopyWithImpl<$Res> implements $UserCopyWith<$Res> {
-  _$UserCopyWithImpl(this._value, this._then);
+class _$NotesUserCopyWithImpl<$Res> implements $NotesUserCopyWith<$Res> {
+  _$NotesUserCopyWithImpl(this._value, this._then);
 
-  final User _value;
+  final NotesUser _value;
   // ignore: unused_field
-  final $Res Function(User) _then;
+  final $Res Function(NotesUser) _then;
 
   @override
   $Res call({
     Object id = freezed,
+    Object firebaseUser = freezed,
   }) {
     return _then(_value.copyWith(
       id: id == freezed ? _value.id : id as UniqueId,
+      firebaseUser: firebaseUser == freezed ? _value.firebaseUser : firebaseUser as User,
     ));
   }
 }
 
 /// @nodoc
-abstract class _$UserCopyWith<$Res> implements $UserCopyWith<$Res> {
-  factory _$UserCopyWith(_User value, $Res Function(_User) then) =
-      __$UserCopyWithImpl<$Res>;
+abstract class _$NotesUserCopyWith<$Res> implements $NotesUserCopyWith<$Res> {
+  factory _$NotesUserCopyWith(_NotesUser value, $Res Function(_NotesUser) then) = __$NotesUserCopyWithImpl<$Res>;
   @override
-  $Res call({UniqueId id});
+  $Res call({UniqueId id, User firebaseUser});
 }
 
 /// @nodoc
-class __$UserCopyWithImpl<$Res> extends _$UserCopyWithImpl<$Res>
-    implements _$UserCopyWith<$Res> {
-  __$UserCopyWithImpl(_User _value, $Res Function(_User) _then)
-      : super(_value, (v) => _then(v as _User));
+class __$NotesUserCopyWithImpl<$Res> extends _$NotesUserCopyWithImpl<$Res> implements _$NotesUserCopyWith<$Res> {
+  __$NotesUserCopyWithImpl(_NotesUser _value, $Res Function(_NotesUser) _then) : super(_value, (v) => _then(v as _NotesUser));
 
   @override
-  _User get _value => super._value as _User;
+  _NotesUser get _value => super._value as _NotesUser;
 
   @override
   $Res call({
     Object id = freezed,
+    Object firebaseUser = freezed,
   }) {
-    return _then(_User(
+    return _then(_NotesUser(
       id: id == freezed ? _value.id : id as UniqueId,
+      firebaseUser: firebaseUser == freezed ? _value.firebaseUser : firebaseUser as User,
     ));
   }
 }
 
 /// @nodoc
-class _$_User implements _User {
-  const _$_User({@required this.id}) : assert(id != null);
+class _$_NotesUser extends _NotesUser {
+  const _$_NotesUser({@required this.id, this.firebaseUser})
+      : assert(id != null),
+        super._();
 
   @override
   final UniqueId id;
+  @override
+  final User firebaseUser;
 
   @override
   String toString() {
-    return 'User(id: $id)';
+    return 'NotesUser(id: $id, firebaseUser: $firebaseUser)';
   }
 
   @override
   bool operator ==(dynamic other) {
     return identical(this, other) ||
-        (other is _User &&
-            (identical(other.id, id) ||
-                const DeepCollectionEquality().equals(other.id, id)));
+        (other is _NotesUser &&
+            (identical(other.id, id) || const DeepCollectionEquality().equals(other.id, id)) &&
+            (identical(other.firebaseUser, firebaseUser) || const DeepCollectionEquality().equals(other.firebaseUser, firebaseUser)));
   }
 
   @override
-  int get hashCode =>
-      runtimeType.hashCode ^ const DeepCollectionEquality().hash(id);
+  int get hashCode => runtimeType.hashCode ^ const DeepCollectionEquality().hash(id) ^ const DeepCollectionEquality().hash(firebaseUser);
 
   @override
-  _$UserCopyWith<_User> get copyWith =>
-      __$UserCopyWithImpl<_User>(this, _$identity);
+  _$NotesUserCopyWith<_NotesUser> get copyWith => __$NotesUserCopyWithImpl<_NotesUser>(this, _$identity);
 }
 
-abstract class _User implements User {
-  const factory _User({@required UniqueId id}) = _$_User;
+abstract class _NotesUser extends NotesUser {
+  const _NotesUser._() : super._();
+  const factory _NotesUser({@required UniqueId id, User firebaseUser}) = _$_NotesUser;
 
   @override
   UniqueId get id;
   @override
-  _$UserCopyWith<_User> get copyWith;
+  User get firebaseUser;
+  @override
+  _$NotesUserCopyWith<_NotesUser> get copyWith;
 }

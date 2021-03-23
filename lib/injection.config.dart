@@ -41,7 +41,8 @@ GetIt $initGetIt(
   gh.lazySingleton<GoogleSignIn>(() => firebaseInjectableModule.googleSignIn);
   gh.lazySingleton<IAuthFacade>(
       () => FirebaseAuthFacade(get<FirebaseAuth>(), get<GoogleSignIn>()));
-  gh.lazySingleton<INoteRepository>(() => HasuraNoteRepository(),
+  gh.lazySingleton<INoteRepository>(
+      () => HasuraNoteRepository(get<IAuthFacade>()),
       registerFor: {_hasura});
   gh.lazySingleton<INoteRepository>(
       () => NoteRepository(get<FirebaseFirestore>()),

@@ -23,6 +23,7 @@ class CriticalFailureDisplay extends StatelessWidget {
           Text(
             failure.maybeMap(
               insufficientPermission: (_) => 'Insufficient permissions',
+              unexpected: (e) => 'Unexpected error: $e\nPlease, contact support.',
               orElse: () => 'Unexpected error. \nPlease, contact support.',
             ),
             style: const TextStyle(fontSize: 24),
